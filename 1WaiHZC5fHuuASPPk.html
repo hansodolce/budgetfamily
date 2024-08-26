@@ -1,0 +1,826 @@
+<html><head><base href="https://budgetfamilial.app/">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GestionBudget Familial - Votre outil personnel de gestion budgétaire en FCFA</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+<style>
+  :root {
+    --primary-color: #3498db;
+    --secondary-color: #2ecc71;
+    --background-color: #f5f5f5;
+    --text-color: #333;
+    --alert-color: #e74c3c;
+    --card-background: #ffffff;
+    --border-color: #ddd;
+  }
+
+  body {
+    font-family: 'Arial', sans-serif;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    margin: 0;
+    padding: 0;
+    transition: all 0.3s ease;
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+
+  header {
+    background-color: var(--primary-color);
+    color: white;
+    text-align: center;
+    padding: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  h1, h2, h3 {
+    margin-top: 0;
+  }
+
+  .card {
+    background-color: var(--card-background);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+
+  input, select, button {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    box-sizing: border-box;
+  }
+
+  button {
+    background-color: var(--secondary-color);
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+
+  button:hover {
+    background-color: #27ae60;
+  }
+
+  .budget-category {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .budget-bar {
+    flex-grow: 1;
+    background-color: #eee;
+    height: 20px;
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 0 10px;
+  }
+
+  .budget-progress {
+    height: 100%;
+    background-color: var(--secondary-color);
+    width: 0;
+    transition: width 0.5s ease;
+  }
+
+  #transactions-list {
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  .transaction-item {
+    border-bottom: 1px solid var(--border-color);
+    padding: 10px 0;
+  }
+
+  #chart-container {
+    width: 100%;
+    height: 400px;
+  }
+
+  .alert {
+    background-color: var(--alert-color);
+    color: white;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+  }
+
+  .dark-theme {
+    --background-color: #2c3e50;
+    --text-color: #ecf0f1;
+    --card-background: #34495e;
+    --border-color: #7f8c8d;
+  }
+
+  @media (max-width: 768px) {
+    .container {
+      padding: 10px;
+    }
+    .budget-category {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .budget-bar {
+      width: 100%;
+      margin: 10px 0;
+    }
+  }
+
+  .income-source {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .income-source input {
+    width: 45%;
+  }
+
+  .add-income-source {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  .category-management {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .category-management input {
+    width: 40%;
+  }
+
+  .category-management button {
+    width: auto;
+    padding: 5px 10px;
+  }
+
+  #monthly-report {
+    background-color: #f9f9f9;
+    border-left: 4px solid var(--primary-color);
+    padding: 15px;
+    margin-top: 20px;
+  }
+
+  #monthly-report h3 {
+    color: var(--primary-color);
+  }
+
+  #monthly-report ul {
+    padding-left: 20px;
+  }
+
+  #suggestions {
+    background-color: #e8f8f5;
+    border-left: 4px solid var(--secondary-color);
+    padding: 15px;
+    margin-top: 20px;
+  }
+
+  #suggestions h4 {
+    color: var(--secondary-color);
+  }
+
+  #auth-container {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  #auth-container input {
+    width: 70%;
+    margin: 10px auto;
+  }
+
+  #auth-container button {
+    width: auto;
+    margin: 0 5px;
+  }
+</style>
+</head>
+<body>
+  <header>
+    <h1>GestionBudget Familial en FCFA</h1>
+  </header>
+
+  <div class="container">
+    <div id="auth-container" class="card">
+      <h2>Connexion / Inscription</h2>
+      <input type="text" id="username" placeholder="Nom d'utilisateur">
+      <input type="password" id="password" placeholder="Mot de passe">
+      <button onclick="login()">Se connecter</button>
+      <button onclick="register()">S'inscrire</button>
+      <button id="signout-btn" onclick="logout()" style="display: none;">Se déconnecter</button>
+    </div>
+
+    <div id="app-container" style="display: none;">
+      <div class="card">
+        <h2>Saisie des Revenus</h2>
+        <input type="month" id="current-month">
+        <div id="income-sources">
+          <div class="income-source">
+            <input type="text" placeholder="Source de revenu">
+            <input type="number" placeholder="Montant (FCFA)">
+          </div>
+        </div>
+        <button class="add-income-source" onclick="addIncomeSource()">Ajouter une source de revenu</button>
+        <button onclick="calculateBudget()">Calculer le Budget</button>
+      </div>
+
+      <div class="card">
+        <h2>Gestion des Catégories Budgétaires</h2>
+        <div class="category-management">
+          <input type="text" id="new-category-name" placeholder="Nom de la catégorie">
+          <input type="number" id="new-category-percentage" placeholder="Pourcentage" min="0" max="100">
+          <button onclick="addCategory()">Ajouter une catégorie</button>
+        </div>
+        <div id="budget-categories"></div>
+      </div>
+
+      <div class="card">
+        <h2>Ajouter une Transaction</h2>
+        <select id="transaction-category"></select>
+        <input type="number" id="transaction-amount" placeholder="Montant (FCFA)">
+        <input type="text" id="transaction-description" placeholder="Description">
+        <input type="date" id="transaction-date">
+        <button onclick="addTransaction()">Ajouter la Transaction</button>
+      </div>
+
+      <div class="card">
+        <h2>Transactions</h2>
+        <div>
+          <select id="filter-category" onchange="filterTransactions()">
+            <option value="">Toutes les catégories</option>
+          </select>
+          <input type="date" id="filter-date" onchange="filterTransactions()">
+          <input type="number" id="filter-amount" placeholder="Montant minimum (FCFA)" onchange="filterTransactions()">
+        </div>
+        <div id="transactions-list"></div>
+      </div>
+
+      <div class="card">
+        <h2>Visualisation du Budget</h2>
+        <canvas id="chart-container"></canvas>
+      </div>
+
+      <div class="card">
+        <h2>Rapport Mensuel</h2>
+        <div id="monthly-report"></div>
+        <div id="suggestions"></div>
+      </div>
+
+      <div class="card">
+        <h2>Historique</h2>
+        <select id="history-month" onchange="loadHistoricalData()">
+          <option value="">Sélectionnez un mois</option>
+        </select>
+        <div id="historical-data"></div>
+      </div>
+
+      <button onclick="saveCurrentMonth()">Sauvegarder le Mois en Cours</button>
+      <button onclick="toggleTheme()">Changer de Thème</button>
+    </div>
+  </div>
+
+  <script>
+    let currentUser = null;
+    let users = {};
+    let categories = [
+      { name: 'Loyer', min: 20, max: 30 },
+      { name: 'Impôt et taxes', min: 7, max: 7 },
+      { name: 'Services publics', min: 4, max: 7 },
+      { name: 'Alimentation', min: 15, max: 20 },
+      { name: 'Transport', min: 6, max: 20 },
+      { name: 'Épargne', min: 5, max: 10 },
+      { name: 'Frais médicaux', min: 2, max: 8 },
+      { name: 'Dettes', min: 15, max: 20 },
+      { name: 'Divers et imprévus', min: 5, max: 10 }
+    ];
+
+    let monthlyIncome = 0;
+    let budgetDistribution = {};
+    let transactions = {};
+    let historicalData = {};
+    let chart;
+
+    // Fonction pour hacher le mot de passe
+    function hashPassword(password) {
+      return CryptoJS.SHA256(password).toString();
+    }
+
+    // Fonction pour chiffrer les données
+    function encryptData(data, key) {
+      return CryptoJS.AES.encrypt(JSON.stringify(data), key).toString();
+    }
+
+    // Fonction pour déchiffrer les données
+    function decryptData(encryptedData, key) {
+      const bytes = CryptoJS.AES.decrypt(encryptedData, key);
+      return JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
+    }
+
+    function register() {
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+
+      if (!username || !password) {
+        showAlert("Veuillez entrer un nom d'utilisateur et un mot de passe.");
+        return;
+      }
+
+      if (users[username]) {
+        showAlert("Ce nom d'utilisateur existe déjà.");
+        return;
+      }
+
+      const hashedPassword = hashPassword(password);
+      users[username] = { password: hashedPassword, data: encryptData({}, password) };
+      localStorage.setItem('users', JSON.stringify(users));
+      showAlert("Compte créé avec succès!", "success");
+      login();
+    }
+
+    function login() {
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+
+      if (!users[username] || users[username].password !== hashPassword(password)) {
+        showAlert("Nom d'utilisateur ou mot de passe incorrect.");
+        return;
+      }
+
+      currentUser = username;
+      showAlert("Connexion réussie!", "success");
+      showApp();
+      loadUserData(password);
+    }
+
+    function logout() {
+      saveUserData(document.getElementById('password').value);
+      currentUser = null;
+      showAlert("Déconnexion réussie!", "success");
+      hideApp();
+    }
+
+    function showApp() {
+      document.getElementById('auth-container').style.display = 'none';
+      document.getElementById('app-container').style.display = 'block';
+      document.getElementById('signout-btn').style.display = 'inline-block';
+    }
+
+    function hideApp() {
+      document.getElementById('auth-container').style.display = 'block';
+      document.getElementById('app-container').style.display = 'none';
+      document.getElementById('signout-btn').style.display = 'none';
+    }
+
+    function loadUserData(password) {
+      if (!currentUser) return;
+
+      const encryptedData = users[currentUser].data;
+      const userData = decryptData(encryptedData, password);
+      categories = userData.categories || categories;
+      monthlyIncome = userData.monthlyIncome || 0;
+      budgetDistribution = userData.budgetDistribution || {};
+      transactions = userData.transactions || {};
+      historicalData = userData.historicalData || {};
+
+      updateBudgetDisplay();
+      initializeTransactionCategories();
+      updateTransactionList();
+      updateChart();
+      updateHistorySelect();
+    }
+
+    function saveUserData(password) {
+      if (!currentUser) return;
+
+      const userData = {
+        categories,
+        monthlyIncome,
+        budgetDistribution,
+        transactions,
+        historicalData
+      };
+      users[currentUser].data = encryptData(userData, password);
+      localStorage.setItem('users', JSON.stringify(users));
+      showAlert("Données sauvegardées avec succès!", "success");
+    }
+
+    function addIncomeSource() {
+      const incomeSourcesDiv = document.getElementById('income-sources');
+      const newSourceDiv = document.createElement('div');
+      newSourceDiv.className = 'income-source';
+      newSourceDiv.innerHTML = `
+        <input type="text" placeholder="Source de revenu">
+        <input type="number" placeholder="Montant (FCFA)">
+      `;
+      incomeSourcesDiv.appendChild(newSourceDiv);
+    }
+
+    function calculateBudget() {
+      const incomeSources = document.querySelectorAll('.income-source');
+      monthlyIncome = Array.from(incomeSources).reduce((sum, source) => {
+        const amount = parseFloat(source.querySelector('input[type="number"]').value);
+        return sum + (isNaN(amount) ? 0 : amount);
+      }, 0);
+
+      if (monthlyIncome <= 0) {
+        showAlert("Veuillez entrer un revenu mensuel valide.");
+        return;
+      }
+
+      budgetDistribution = {};
+      let remainingPercentage = 100;
+
+      categories.forEach(category => {
+        const randomPercentage = Math.random() * (category.max - category.min) + category.min;
+        const actualPercentage = Math.min(randomPercentage, remainingPercentage);
+        budgetDistribution[category.name] = (monthlyIncome * actualPercentage / 100).toFixed(2);
+        remainingPercentage -= actualPercentage;
+      });
+
+      updateBudgetDisplay();
+      initializeTransactionCategories();
+      updateChart();
+      saveUserData(document.getElementById('password').value);
+    }
+
+    function updateBudgetDisplay() {
+      const container = document.getElementById('budget-categories');
+      container.innerHTML = '';
+      Object.entries(budgetDistribution).forEach(([category, amount]) => {
+        const percentage = ((amount / monthlyIncome) * 100).toFixed(2);
+        container.innerHTML += `
+          <div class="budget-category">
+            <span>${category}</span>
+            <div class="budget-bar">
+              <div class="budget-progress" id="progress-${category.replace(/\s+/g, '-').toLowerCase()}"></div>
+            </div>
+            <span>${amount} FCFA (${percentage}%)</span>
+            <button onclick="removeCategory('${category}')">Supprimer</button>
+          </div>
+        `;
+      });
+      updateBudgetProgress();
+    }
+
+    function addCategory() {
+      const name = document.getElementById('new-category-name').value;
+      const percentage = parseFloat(document.getElementById('new-category-percentage').value);
+
+      if (!name || isNaN(percentage) || percentage <= 0 || percentage > 100) {
+        showAlert("Veuillez entrer un nom de catégorie et un pourcentage valide.");
+        return;
+      }
+
+      categories.push({ name, min: percentage, max: percentage });
+      calculateBudget();
+      showAlert("Nouvelle catégorie ajoutée avec succès.", "success");
+      saveUserData(document.getElementById('password').value);
+    }
+
+    function removeCategory(categoryName) {
+      categories = categories.filter(c => c.name !== categoryName);
+      delete budgetDistribution[categoryName];
+      delete transactions[categoryName];
+      calculateBudget();
+      updateTransactionList();
+      showAlert(`Catégorie "${categoryName}" supprimée avec succès.`, "success");
+      saveUserData(document.getElementById('password').value);
+    }
+
+    function initializeTransactionCategories() {
+      const select = document.getElementById('transaction-category');
+      const filterSelect = document.getElementById('filter-category');
+      select.innerHTML = '';
+      filterSelect.innerHTML = '<option value="">Toutes les catégories</option>';
+      Object.keys(budgetDistribution).forEach(category => {
+        select.innerHTML += `<option value="${category}">${category}</option>`;
+        filterSelect.innerHTML += `<option value="${category}">${category}</option>`;
+      });
+      transactions = Object.fromEntries(Object.keys(budgetDistribution).map(category => [category, []]));
+    }
+
+    function addTransaction() {
+      const category = document.getElementById('transaction-category').value;
+      const amount = parseFloat(document.getElementById('transaction-amount').value);
+      const description = document.getElementById('transaction-description').value;
+      const date = document.getElementById('transaction-date').value;
+
+      if (!category || isNaN(amount) || amount <= 0 || !description || !date) {
+        showAlert("Veuillez remplir tous les champs correctement.");
+        return;
+      }
+
+      if (!transactions[category]) {
+        transactions[category] = [];
+      }
+      transactions[category].push({ amount, description, date });
+      updateTransactionList();
+      updateBudgetProgress();
+      updateChart();
+      showAlert("Transaction ajoutée avec succès.", "success");
+      saveUserData(document.getElementById('password').value);
+    }
+
+    function updateTransactionList() {
+      const list = document.getElementById('transactions-list');
+      list.innerHTML = '';
+      Object.entries(transactions).forEach(([category, categoryTransactions]) => {
+        categoryTransactions.forEach((transaction, index) => {
+          list.innerHTML += `
+            <div class="transaction-item">
+              <strong>${category}</strong> - ${transaction.amount} FCFA
+              <br>${transaction.description} (${transaction.date})
+              <button onclick="editTransaction('${category}', ${index})">Modifier</button>
+              <button onclick="deleteTransaction('${category}', ${index})">Supprimer</button>
+            </div>
+          `;
+        });
+      });
+    }
+
+    function editTransaction(category, index) {
+      const transaction = transactions[category][index];
+      document.getElementById('transaction-category').value = category;
+      document.getElementById('transaction-amount').value = transaction.amount;
+      document.getElementById('transaction-description').value = transaction.description;
+      document.getElementById('transaction-date').value = transaction.date;
+
+      const addButton = document.querySelector('button[onclick="addTransaction()"]');
+      addButton.textContent = 'Mettre à jour la Transaction';
+      addButton.onclick = () => updateTransaction(category, index);
+    }
+
+    function updateTransaction(category, index) {
+      const amount = parseFloat(document.getElementById('transaction-amount').value);
+      const description = document.getElementById('transaction-description').value;
+      const date = document.getElementById('transaction-date').value;
+
+      if (isNaN(amount) || amount <= 0 || !description || !date) {
+        showAlert("Veuillez remplir tous les champs correctement.");
+        return;
+      }
+
+      transactions[category][index] = { amount, description, date };
+      updateTransactionList();
+      updateBudgetProgress();
+      updateChart();
+      showAlert("Transaction mise à jour avec succès.", "success");
+      saveUserData(document.getElementById('password').value);
+
+      const updateButton = document.querySelector('button[onclick^="updateTransaction"]');
+      updateButton.textContent = 'Ajouter la Transaction';
+      updateButton.onclick = addTransaction;
+    }
+
+    function deleteTransaction(category, index) {
+      transactions[category].splice(index, 1);
+      updateTransactionList();
+      updateBudgetProgress();
+      updateChart();
+      showAlert("Transaction supprimée avec succès.", "success");
+      saveUserData(document.getElementById('password').value);
+    }
+
+    function updateBudgetProgress() {
+      Object.entries(transactions).forEach(([category, categoryTransactions]) => {
+        const spent = categoryTransactions.reduce((sum, transaction) => sum + transaction.amount, 0);
+        const budget = parseFloat(budgetDistribution[category]);
+        const percentage = Math.min((spent / budget) * 100, 100);
+        const progressBar = document.getElementById(`progress-${category.replace(/\s+/g, '-').toLowerCase()}`);
+        if (progressBar) {
+          progressBar.style.width = `${percentage}%`;
+        }
+        
+        if (percentage > 90) {
+          showAlert(`Attention : Vous avez utilisé plus de 90% du budget alloué pour ${category}.`);
+        }
+      });
+    }
+
+    function updateChart() {
+      const ctx = document.getElementById('chart-container').getContext('2d');
+      
+      if (chart) {
+        chart.destroy();
+      }
+
+      const labels = Object.keys(budgetDistribution);
+      const budgetData = Object.values(budgetDistribution).map(parseFloat);
+      const spentData = labels.map(category => 
+        transactions[category]?.reduce((sum, transaction) => sum + transaction.amount, 0) || 0
+      );
+
+      chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Budget',
+            data: budgetData,
+            backgroundColor: 'rgba(52, 152, 219, 0.7)',
+            borderColor: 'rgba(52, 152, 219, 1)',
+            borderWidth: 1
+          }, {
+            label: 'Dépensé',
+            data: spentData,
+            backgroundColor: 'rgba(46, 204, 113, 0.7)',
+            borderColor: 'rgba(46, 204, 113, 1)',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Montant (FCFA)'
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function filterTransactions() {
+      const category = document.getElementById('filter-category').value;
+      const date = document.getElementById('filter-date').value;
+      const amount = parseFloat(document.getElementById('filter-amount').value);
+
+      const filteredTransactions = Object.entries(transactions).flatMap(([cat, catTransactions]) => 
+        catTransactions.filter(transaction => 
+          (!category || cat === category) &&
+          (!date || transaction.date === date) &&
+          (!amount || transaction.amount >= amount)
+        ).map(transaction => ({ ...transaction, category: cat }))
+      );
+
+      const list = document.getElementById('transactions-list');
+      list.innerHTML = filteredTransactions.map((transaction, index) => `
+        <div class="transaction-item">
+          <strong>${transaction.category}</strong> - ${transaction.amount} FCFA
+          <br>${transaction.description} (${transaction.date})
+          <button onclick="editTransaction('${transaction.category}', ${index})">Modifier</button>
+          <button onclick="deleteTransaction('${transaction.category}', ${index})">Supprimer</button>
+        </div>
+      `).join('');
+    }
+
+    function saveCurrentMonth() {
+      const currentMonth = document.getElementById('current-month').value;
+      historicalData[currentMonth] = {
+        income: monthlyIncome,
+        budgetDistribution: { ...budgetDistribution },
+        transactions: JSON.parse(JSON.stringify(transactions))
+      };
+      updateHistorySelect();
+      showAlert("Données du mois sauvegardées avec succès!", "success");
+      saveUserData(document.getElementById('password').value);
+    }
+
+    function updateHistorySelect() {
+      const historySelect = document.getElementById('history-month');
+      historySelect.innerHTML = '<option value="">Sélectionnez un mois</option>';
+      Object.keys(historicalData).sort().forEach(month => {
+        historySelect.innerHTML += `<option value="${month}">${month}</option>`;
+      });
+    }
+
+    function loadHistoricalData() {
+      const selectedMonth = document.getElementById('history-month').value;
+      if (selectedMonth && historicalData[selectedMonth]) {
+        const data = historicalData[selectedMonth];
+        const container = document.getElementById('historical-data');
+        container.innerHTML = `
+          <h3>Données pour ${selectedMonth}</h3>
+          <p>Revenu : ${data.income} FCFA</p>
+          <h4>Répartition du budget :</h4>
+          <ul>
+            ${Object.entries(data.budgetDistribution).map(([category, amount]) => `
+              <li>${category}: ${amount} FCFA</li>
+            `).join('')}
+          </ul>
+          <h4>Transactions :</h4>
+          <ul>
+            ${Object.entries(data.transactions).flatMap(([category, transactions]) => 
+              transactions.map(t => `
+                <li>${category}: ${t.amount} FCFA - ${t.description} (${t.date})</li>
+              `)
+            ).join('')}
+          </ul>
+        `;
+        generateMonthlyReport(data);
+      } else {
+        document.getElementById('historical-data').innerHTML = '';
+        document.getElementById('monthly-report').innerHTML = '';
+        document.getElementById('suggestions').innerHTML = '';
+      }
+    }
+
+    function generateMonthlyReport(data) {
+      const totalSpent = Object.values(data.transactions).flat().reduce((sum, t) => sum + t.amount, 0);
+      const savings = data.income - totalSpent;
+      const reportContainer = document.getElementById('monthly-report');
+      
+      reportContainer.innerHTML = `
+        <h3>Rapport Mensuel</h3>
+        <p>Revenu total : ${data.income} FCFA</p>
+        <p>Dépenses totales : ${totalSpent.toFixed(2)} FCFA</p>
+        <p>Économies : ${savings.toFixed(2)} FCFA</p>
+        <h4>Analyse par catégorie :</h4>
+        <ul>
+          ${Object.entries(data.budgetDistribution).map(([category, budget]) => {
+            const spent = data.transactions[category]?.reduce((sum, t) => sum + t.amount, 0) || 0;
+            const percentage = (spent / parseFloat(budget) * 100).toFixed(2);
+            return `<li>${category}: ${spent} FCFA / ${budget} FCFA (${percentage}%)</li>`;
+          }).join('')}
+        </ul>
+      `;
+      
+      generateSuggestions(data);
+    }
+
+    function generateSuggestions(data) {
+      let suggestions = [];
+      Object.entries(data.budgetDistribution).forEach(([category, budget]) => {
+        const spent = data.transactions[category]?.reduce((sum, t) => sum + t.amount, 0) || 0;
+        const percentage = spent / parseFloat(budget) * 100;
+        
+        if (percentage > 100) {
+          suggestions.push(`<li>Essayez de réduire vos dépenses dans la catégorie "${category}". Vous avez dépassé le budget de ${(percentage - 100).toFixed(2)}%.</li>`);
+        } else if (percentage < 50) {
+          suggestions.push(`<li>Vous avez bien économisé dans la catégorie "${category}". Envisagez de réallouer une partie de ce budget à l'épargne ou à d'autres catégories si nécessaire.</li>`);
+        }
+      });
+      
+      const suggestionsContainer = document.getElementById('suggestions');
+      if (suggestions.length > 0) {
+        suggestionsContainer.innerHTML = `
+          <h4>Suggestions pour le mois prochain :</h4>
+          <ul>${suggestions.join('')}</ul>
+        `;
+      } else {
+        suggestionsContainer.innerHTML = "<p>Votre gestion budgétaire semble équilibrée. Continuez ainsi !</p>";
+      }
+    }
+
+    function showAlert(message, type = 'error') {
+      const alertDiv = document.createElement('div');
+      alertDiv.className = 'alert';
+      alertDiv.textContent = message;
+      alertDiv.style.backgroundColor = type === 'error' ? 'var(--alert-color)' : 'var(--secondary-color)';
+      document.body.insertBefore(alertDiv, document.body.firstChild);
+      setTimeout(() => alertDiv.remove(), 5000);
+    }
+
+    function toggleTheme() {
+      document.body.classList.toggle('dark-theme');
+    }
+
+    // Initialize the application
+    document.addEventListener('DOMContentLoaded', () => {
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('transaction-date').value = today;
+      document.getElementById('filter-date').value = '';
+      document.getElementById('current-month').value = today.slice(0, 7);
+
+      // Load users from localStorage
+      const storedUsers = localStorage.getItem('users');
+      if (storedUsers) {
+        users = JSON.parse(storedUsers);
+      }
+
+      // Check if user is already logged in (you might want to use a more secure method in a real application)
+      const loggedInUser = localStorage.getItem('loggedInUser');
+      if (loggedInUser && users[loggedInUser]) {
+        currentUser = loggedInUser;
+        showApp();
+        loadUserData(localStorage.getItem('userPassword')); // Note: storing passwords in localStorage is not secure, this is just for demonstration
+      } else {
+        hideApp();
+      }
+    });
+  </script>
+</body>
+</html>
